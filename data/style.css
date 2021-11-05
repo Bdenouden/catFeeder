@@ -1,0 +1,90 @@
+.header {
+    margin-top: 6rem;
+    text-align: center;
+}
+
+input[type="datetime-local"] {
+    height: 50px;
+    padding: 0 20px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+.open {
+    transform: rotate(50deg);
+}
+
+.gate-container {
+    display: flex;
+    justify-content: space-around;
+}
+
+.iris {
+    width: 49%;
+    max-width: 300px;
+    display: inline-block;
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+}
+
+#leaf_1,
+#leaf_2 {
+    fill: #c4c4c4;
+    fill-opacity: 1;
+    stroke: #000000;
+    stroke-width: 0.349999;
+    transform-origin: 10px -23px;
+    transition: 1s ease-in-out;
+}
+
+.iris-bg {
+    display: inline;
+    fill: #ffb380;
+    stroke: #ff0000;
+    stroke-width: 0.483308;
+    stroke-linejoin: round;
+}
+
+#notify {
+    position: fixed;
+    top: 10px;
+    right: 5px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid;
+    transition: 0.5s;
+    height: 0;
+    opacity: 0;
+    overflow-y: hidden;
+    z-index: 9999;
+}
+
+#notify.success {
+    color: #468847;
+    background-color: #DFF0D8;
+    border-color: #D6E9C6;
+}
+
+#notify.error{
+    color: #B94A48;
+    background-color: #F2DEDE;
+    border-color: #EED3D7;
+}
+
+#notify.show {
+    height: 26px;
+    opacity: 1;
+    padding: 5px 10px;
+}
+
+.button-link{
+    color: #1eaedb;
+    cursor: pointer;
+    text-decoration: underline;
+    background-color: transparent;
+}
+
+.button-link:hover{
+    color: #0fa0ce
+}

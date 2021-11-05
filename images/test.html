@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <svg onclick="toggle(this)" version="1.1" width="61.493465mm" height="61.333328mm" viewBox="-30 -30 120 120" id="svg35">
+        <circle style="display:inline;fill:#ffb380;stroke:#ff0000;stroke-width:0.483308;stroke-linejoin:round"
+            id="path1730" cx="30.645245" cy="30.605453" r="30.371607" inkscape:label="outline" />
+        <g id="iris_1" transform="translate(31.322031,31.81288)" inkscape:label="iris">
+            <path id="leaf"
+                style="fill:#c4c4c4;fill-opacity:1;stroke:#000000;stroke-width:0.349999;transform-origin: 10px -23px;transition: 1s ease-in-out;"
+                class="open" inkscape:label="leaf" inkscape:transform-center-x="13.60993"
+                inkscape:transform-center-y="7.254251"
+                d="m 10.408613,-29.452272 c -9.95596342,-3.99174 -21.339476,-2.37458 -29.799849,4.343998 l 6.262328,7.897626 c 1.059813,6.999532 5.750501,12.8853628 12.33212533,15.480858 0.44978464,-7.073052 4.58934877,-13.380182 10.91581167,-16.583044 l 2.763009,-4.241488 c 0.38093,-0.664614 0.472382,-1.43471 0.246923,-2.169909 l -1.262726,-4.098473 c -0.482215,-0.22351 -0.967988,-0.433253 -1.457626,-0.629569 z m 0.677659,4.035201 a 1.6,1.6 0 0 1 0.911279,2.070612 1.6,1.6 0 0 1 -2.0708018,0.91176 1.6,1.6 0 0 1 -0.9115713,-2.071282 1.6,1.6 0 0 1 2.0710941,-0.91109 z" />
+            <use x="0" y="0" xlink:href="#leaf" inkscape:transform-center-x="9.6381584"
+                inkscape:transform-center-y="-13.019769" id="use6453" width="100%" height="100%"
+                transform="rotate(72.17667,-0.60550046,-1.2567798)" />
+            <use x="0" y="0" xlink:href="#use6453" inkscape:transform-center-x="-10.492589"
+                inkscape:transform-center-y="-10.311694" id="use6455" width="100%" height="100%"
+                transform="rotate(71.687991,-0.73731854,-1.53746)" />
+            <use x="0" y="0" xlink:href="#use6455" inkscape:transform-center-x="-10.628964"
+                inkscape:transform-center-y="3.8506774" id="use6457" width="100%" height="100%"
+                transform="rotate(72.877391,-0.91420838,-1.1673159)" />
+            <use x="0" y="0" xlink:href="#use6457" inkscape:transform-center-x="-2.5454679"
+                inkscape:transform-center-y="12.532859" id="use6459" width="100%" height="100%"
+                transform="rotate(71.289127,-0.55880707,-1.2486738)" />
+        </g>
+    </svg>
+
+    <style>
+        .open {
+            transform: rotate(45deg);
+        }
+    </style>
+
+    <script>
+        function toggle(e) {
+            console.log(e);
+            var leaf = e.getElementById("leaf");
+            if (leaf.classList.contains("open")) {
+                leaf.classList.remove("open");
+            } else {
+                leaf.classList.add("open");
+            }
+        }
+    </script>
+
+
+</body>
+
+
+
+
+</html>
