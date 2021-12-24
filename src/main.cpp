@@ -240,6 +240,13 @@ void createWebPages()
     server.on("/cat.svg", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(SPIFFS, "/cat.svg"); });
 
+    server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+                  saveWifiCredentials("", "");
+                  request->send(200, "text/plain", "The wifi credentials have been reset");
+                  ESP.restart();
+              });
+
     server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(SPIFFS, "/settings.html"); });
     server.on("/set", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -362,11 +369,12 @@ void updateGate(Gate *g)
             bool dir = g->servo->read() < g->target; // increment position if position < target
             // end reached
             if ((dir && g->target - servoIncrement < pos) ||
-                (!dir && g->target + servoIncrement > pos))
+                (!dir && g->target + servoIncrement > pos) ||
+                !WiFi.isConnected())
             {
                 g->servo->write(g->target);
+                delay(1000);
                 Serial.printf("Turning off power from gate %d\n", g->id);
-                delay(100);
                 digitalWrite(g->powerPin, HIGH);
                 g->isPowered = false;
                 saveConfig();
@@ -429,6 +437,7 @@ void setup()
     getWiFiCredentials();
     Serial.printf("SSID: %s\n", ssid);
     Serial.printf("PW: %s\n", password);
+    Serial.println("Connecting to wifi....");
 
     WiFi.hostname(HOSTNAME);
     WiFi.mode(WIFI_STA);
@@ -462,7 +471,7 @@ void setup()
     createWebPages();
     server.begin();
 
-    leds[0] = CRGB::Green;
+    leds[0] = CRGB::Black;
     FastLED.show();
 
     Serial.println("Setup complete");
