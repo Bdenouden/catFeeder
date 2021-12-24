@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatFood</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="normalize.min.css">
+    <link rel="stylesheet" href="skeleton.min.css">
+    <link rel="icon" href="cat.svg">
+    <script src="script.js"></script>
+</head>
+
+<body>
+    <div id="notify">
+        <span class="message"></span>
+    </div>
+    <div class="container">
+        <section class="header">
+            <h1 class="title" style="margin-top: 10%">
+                Settings
+            </h1>
+            <h3 id="serverDateTime">13:44</h3>
+        </section>        
+
+        <form action="/set" id="settingsForm" method="post">
+            <div class="row">
+                <div class="offset-by-four eight columns">
+                    <label>
+                        <span class="label-body" style="width:80px">SSID</span>
+                        <input required type="text" value="" name="ssid">
+                    </label>
+                </div>
+                <div class="offset-by-four eight columns">
+                    <label>
+                        <span class="label-body" style="width:80px">Password</span>
+                        <input required type="password" value="" name="password">
+                    </label>
+                </div>
+                <div class="row">
+                    <input class="offset-by-four four columns" type="submit" style="margin-top: 5%;">
+                </div>
+            </div>
+        </form>
+    </div>
+    <script>
+        
+    </script>
+</body>
+
+</html>

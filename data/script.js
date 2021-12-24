@@ -2,8 +2,13 @@ var timeout1, timeout2;
 
 function setSchedule(gate, scheduled) {
     const secondsSinceEpoch = Math.round(Date.now() / 1000);
-    console.log(`Schedule for gate ${gate} triggers in ${(scheduled-secondsSinceEpoch)} s`);
-    window[`timeout_${gate}`] = setTimeout(openLeaf.bind(null, gate), (scheduled - secondsSinceEpoch) * 1000);
+    const timeDif = scheduled - secondsSinceEpoch;
+    if (timeDif > 0) { // only set timer if scheduled time > current time
+        console.log(`Schedule for gate ${gate} triggers in ${(timeDif)} s`);
+        window[`timeout_${gate}`] = setTimeout(openLeaf.bind(null, gate), timeDif * 1000);
+    } else {
+        console.log(`Schedule for gate ${gate} expired ${-1*timeDif} s ago`);
+    }
 }
 
 function openLeaf(g) {
@@ -75,46 +80,47 @@ window.onload = async function() {
     // Get the current gate states and schedule
     let info = JSON.parse(await ajaxGet("/api/info"));
     console.log(info);
-    console.log(epoch2str(info.gate_1.schedule));
-    console.log(epoch2str(info.gate_2.schedule));
 
-    // get schedule values and set timers
-    const schedule = [
-        document.getElementById("schedule_1"),
-        document.getElementById("schedule_2")
-    ];
-    for (let g = 1; g < schedule.length + 1; g++) {
-        let t = info[`gate_${g}`].schedule;
-        if (t) {
-            schedule[g - 1].innerHTML = epoch2str(t);
-            setSchedule(g, t);
-        } else {
-            schedule[g - 1].innerHTML = "not set";
+    if (window.location.pathname == '/') {
+
+        const wifiWarning = document.getElementById("wifiWarning");
+        if(info.isConnected){
+            wifiWarning.style.display = "none";
+        }
+
+        // get schedule values and set timers
+        const schedule = [
+            document.getElementById("schedule_1"),
+            document.getElementById("schedule_2")
+        ];
+        for (let g = 1; g < schedule.length + 1; g++) {
+            let t = info[`gate_${g}`].schedule;
+            if (t) {
+                schedule[g - 1].innerHTML = epoch2str(t);
+                setSchedule(g, t);
+            } else {
+                schedule[g - 1].innerHTML = "not set";
+            }
+        }
+
+        const leaf1 = document.getElementById("leaf_1");
+        const leaf2 = document.getElementById("leaf_2");
+        info.gate_1.state ? leaf1.classList.add("open") : leaf1.classList.remove("open");
+        info.gate_2.state ? leaf2.classList.add("open") : leaf2.classList.remove("open");
+    } else {
+        const dt = document.getElementById("serverDateTime");
+        if (dt) {
+            dt.innerHTML = epoch2str(info.time);
+            dt.setAttribute("epoch", info.time);
+            setInterval(function() {
+                const dt = document.getElementById("serverDateTime");
+                let newTime = parseInt(dt.getAttribute("epoch"),10)+1;
+                dt.setAttribute('epoch', newTime);
+                dt.innerHTML = epoch2str(newTime);
+            }, 1000);
         }
     }
-
-    const leaf1 = document.getElementById("leaf_1");
-    const leaf2 = document.getElementById("leaf_2");
-    info.gate_1.state ? leaf1.classList.add("open") : leaf1.classList.remove("open");
-    info.gate_2.state ? leaf2.classList.add("open") : leaf2.classList.remove("open");
 }
-
-// JSON info template
-// `
-// {    
-//     RSSI : "-50",
-//     ip: "192.168.1.123",
-//     time: 0, // server time
-//     gate_1:{
-//        state: 1, // 1 = open, 0 = closed 
-//        schedule: 0, // epoch timestamp
-//     },
-//     gate_2:{
-//         state: 0, // 1 = open, 0 = closed 
-//         schedule: 1636466400, // 2021-11-09T15:00 
-//      },
-// }
-// `
 
 function str2epoch(ts) {
     // var ts = "2021-11-09T15:00";
@@ -127,8 +133,6 @@ function epoch2str(epoch) {
     d.setUTCSeconds(epoch);
     return `${d.getDate()}-${d.getMonth()+1}-${d.getFullYear()} ${d.getHours()}:${d.getMinutes()}`
 }
-
-// TODO opening of gate on UI when schedule elapses
 
 async function setDate() {
     const time = str2epoch(document.getElementById("fdate").value);

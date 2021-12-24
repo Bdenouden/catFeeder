@@ -66,7 +66,7 @@ input[type="datetime-local"] {
     border-color: #D6E9C6;
 }
 
-#notify.error{
+#notify.error {
     color: #B94A48;
     background-color: #F2DEDE;
     border-color: #EED3D7;
@@ -78,13 +78,26 @@ input[type="datetime-local"] {
     padding: 5px 10px;
 }
 
-.button-link{
+.button-link {
     color: #1eaedb;
     cursor: pointer;
     text-decoration: underline;
     background-color: transparent;
 }
 
-.button-link:hover{
+.button-link:hover {
     color: #0fa0ce
+}
+
+#wifiWarning {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    text-align: center;
+    background-color: #1eaedb;
+    color: white;
+    cursor: pointer;
+    text-decoration: none;
 }

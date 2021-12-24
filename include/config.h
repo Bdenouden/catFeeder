@@ -9,4 +9,8 @@
 #define BTN 0
 #define NUM_LEDS 1
 
+#define HOSTNAME "catFood"
+#define AP_SSID "catFood"
+#define AP_PASS "pabloheefthonger"
+
 #endif

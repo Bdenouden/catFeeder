@@ -16,16 +16,14 @@
 #include <ESP8266mDNS.h>
 #endif
 #include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+// #include <ArduinoOTA.h> // not enough space for OTA on the esp M3
 #include <ESPAsyncWebServer.h>
-#include <credentials.h>
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <Servo.h>
 #include <config.h>
 #include <FastLED.h>
-// #include <SPIFFS.h>
 
 AsyncWebServer server(80);
 const char *missingParams = "Missing/invalid parameter(s)";
@@ -47,19 +45,115 @@ CRGB leds[NUM_LEDS];
 
 struct Gate
 {
-    const uint8_t id;       // gate number
+    uint8_t id;             // gate number
     uint8_t state;          // 1 = open, 0 = closed
     unsigned long schedule; // stores epoch time
     Servo *servo;
-    const uint8_t powerPin;
+    uint8_t powerPin;
     unsigned long t_move;
     uint8_t target;
     bool isPowered;
 };
 
-// TODO add pointers to g1 and g2 to an array
+char ssid[30];
+char password[30];
+
 struct Gate g1 = {1, 0, 0, &S1, SERVO_EN_1, 0, closePos, false};
 struct Gate g2 = {2, 0, 0, &S2, SERVO_EN_2, 0, closePos, false};
+
+void getWiFiCredentials()
+{
+    File f = SPIFFS.open("cred.dat", "r");
+    if (!f || f.isDirectory())
+        Serial.println("Could not load wifi credentials from SPIFFS");
+    else
+    {
+        Serial.print("\nGetting credentials from memory...");
+        uint16_t i = 0;
+        char *ptr = ssid;
+        while (f.available())
+        {
+            char c = f.read();
+            if (c == '\n')
+            {
+                ptr[i] = '\0';
+                ptr = password;
+                i = 0;
+            }
+            else
+            {
+                ptr[i] = c;
+                i++;
+            }
+        }
+        Serial.println("Done!");
+    }
+    f.close();
+}
+
+void saveWifiCredentials(const char *_ssid, const char *_password)
+{
+    File f = SPIFFS.open("cred.dat", "w+");
+    if (!f)
+        Serial.println("Could not load wifi credentials from SPIFFS");
+    else
+    {
+        Serial.println("wifi_cred stored");
+        Serial.println(*_ssid);
+        Serial.println(*_password);
+        f.printf("%s\n%s\n", _ssid, _password);
+        // unsigned char *data = reinterpret_cast<unsigned char *>(wifi_cred);
+        // f.write(data, sizeof(Cred));
+        f.close();
+        Serial.println("Credentials written to file!");
+    }
+}
+
+void saveConfig()
+{
+    File f = SPIFFS.open("/data.dat", "w+");
+    Gate g12[] = {g1, g2};
+    if (!f)
+    {
+        Serial.println("Could not write data to SPIFFS");
+    }
+    else
+    {
+        unsigned char *data = reinterpret_cast<unsigned char *>(g12);
+        f.write(data, sizeof(Gate) * 2);
+        f.close();
+        Serial.println("Data written to file!");
+    }
+    f.close();
+}
+
+void getConfig()
+{
+    File f = SPIFFS.open("/data.dat", "r");
+    Gate g12[2] = {};
+    uint8_t data[sizeof(Gate) * 2];
+    if (!f)
+    {
+        Serial.println("Could not load data from SPIFFS");
+    }
+    else
+    {
+        for (unsigned int i = 0; i < sizeof(data); i++)
+        {
+            data[i] = f.read();
+        }
+        memcpy(&g12, &data, sizeof(Gate) * 2);
+        g1 = g12[0];
+        g2 = g12[1];
+
+        // persistent storage of pointers is not possible -> S1 and S2 should be reassigned after reading from memory
+        g1.servo = &S1;
+        g2.servo = &S2;
+
+        Serial.println("Gate config has been loaded from memory");
+    }
+    f.close();
+}
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -102,10 +196,12 @@ bool moveGate(uint8_t id, uint8_t pos)
     {
         Serial.println("nullpointer found while moving gate!");
         leds[0] = CRGB::Red;
+        FastLED.show();
         return false;
     }
 
     leds[0] = CRGB::Blue;
+    FastLED.show();
     digitalWrite(g->powerPin, LOW); // turn on
     g->isPowered = true;
     g->target = pos;
@@ -115,14 +211,14 @@ bool moveGate(uint8_t id, uint8_t pos)
 }
 
 // open gate matching id
-bool open(uint8_t id)
+bool gOpen(uint8_t id)
 {
     Serial.printf("opening gate %d\n", id);
     return moveGate(id, openPos);
 }
 
 // close gate matching id
-bool close(uint8_t id)
+bool gClose(uint8_t id)
 {
     Serial.printf("closing gate %d\n", id);
     return moveGate(id, closePos);
@@ -144,6 +240,27 @@ void createWebPages()
     server.on("/cat.svg", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(SPIFFS, "/cat.svg"); });
 
+    server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/settings.html"); });
+    server.on("/set", HTTP_POST, [](AsyncWebServerRequest *request)
+              {
+                  if (request->hasParam("ssid", true) &&
+                      request->hasParam("password", true))
+                  {
+                      AsyncWebParameter *ssid = request->getParam("ssid", true);
+                      AsyncWebParameter *pw = request->getParam("password", true);
+
+                      Serial.println(ssid->value().c_str());
+                      Serial.println(pw->value().c_str());
+                      saveWifiCredentials(ssid->value().c_str(), pw->value().c_str());
+                      Serial.println("Received new settings!");
+                      request->redirect("/");
+                      ESP.restart();
+                  }
+
+                  request->send(400, typeJson, missingParams);
+              });
+
     // api get info endpoint
     server.on("/api/info", HTTP_GET, [](AsyncWebServerRequest *request)
               {
@@ -152,6 +269,7 @@ void createWebPages()
                   doc["RSSI"] = WiFi.RSSI();
                   doc["ip"] = WiFi.localIP();
                   doc["time"] = timeClient.getEpochTime();
+                  doc["isConnected"] = WiFi.isConnected();
                   JsonObject gate_1 = doc.createNestedObject("gate_1");
                   gate_1["state"] = g1.target == closePos ? 0 : 1;
                   gate_1["schedule"] = g1.schedule;
@@ -171,7 +289,7 @@ void createWebPages()
                       if (gate == 1 || gate == 2)
                       {
                           // TODO check if gate actually closed
-                          open(gate); // gate number as argument
+                          gOpen(gate); // gate number as argument
                           request->send(200, typeJson, mOK);
                       }
                   }
@@ -187,7 +305,7 @@ void createWebPages()
                       if (gate == 1 || gate == 2)
                       {
                           // TODO check if gate actually closed
-                          close(gate); // gate number as argument
+                          gClose(gate); // gate number as argument
                           request->send(200, typeJson, mOK);
                       }
                   }
@@ -203,12 +321,12 @@ void createWebPages()
                       if (g == nullptr)
                       {
                           Serial.println("nullpointer found while setting date!");
-                          leds[0] = CRGB::Red;
                           request->send(400, typeJson, missingParams);
                       }
                       g->schedule = request->getParam("t")->value().toInt();
                       g->state = true; // schedule active
                       request->send(200, typeJson, mOK);
+                      saveConfig();
                   }
                   request->send(400, typeJson, missingParams);
               });
@@ -222,7 +340,6 @@ void createWebPages()
                       if (g == nullptr)
                       {
                           Serial.println("nullpointer found while setting date!");
-                          leds[0] = CRGB::Red;
                           request->send(400, typeJson, missingParams);
                       }
                       g->schedule = 0;
@@ -235,64 +352,8 @@ void createWebPages()
     server.onNotFound(notFound);
 }
 
-void setup()
-{
-    Serial.begin(115200);
-
-    if (!SPIFFS.begin())
-    {
-        Serial.println("An Error has occurred while mounting SPIFFS");
-    }
-
-    Serial.println("SPIFFS content:");
-    listSFcontent();
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-        Serial.printf("WiFi Failed!\n");
-        return;
-    }
-
-    Serial.print("\n\nIP Address: ");
-    Serial.println(WiFi.localIP());
-
-    // attach servo pin to servo objects
-    //    g1.servo.attach(SERVO_S1);
-    //    g2.servo.attach(SERVO_S2);
-
-    //test
-    S1.attach(SERVO_S1);
-    S2.attach(SERVO_S2);
-
-    pinMode(SERVO_EN_1, OUTPUT);
-    digitalWrite(g1.powerPin, HIGH);
-
-    pinMode(SERVO_EN_2, OUTPUT);
-    digitalWrite(g2.powerPin, HIGH);
-
-    // attach LEDs
-    FastLED.addLeds<WS2812B, LED, GRB>(leds, NUM_LEDS);
-    FastLED.setBrightness(20);
-
-    // Create endpoints for website
-    createWebPages();
-    server.begin();
-
-    leds[0] = CRGB::Blue;
-    FastLED.show();
-    delay(1000);
-
-    leds[0] = CRGB::Green;
-    FastLED.show();
-
-    Serial.println("Setup complete");
-}
-
 void updateGate(Gate *g)
 {
-
     if (g->isPowered)
     {
         if (millis() - g->t_move >= servoDelay)
@@ -308,7 +369,9 @@ void updateGate(Gate *g)
                 delay(100);
                 digitalWrite(g->powerPin, HIGH);
                 g->isPowered = false;
-                leds[0] = CRGB::Green;
+                saveConfig();
+                leds[0] = CRGB::Red;
+                FastLED.show();
             }
             else
             {
@@ -339,9 +402,70 @@ void checkSchedule(Gate *g)
         time >= g->schedule &&
         g->servo->read() != openPos)
     {
-        open(g->id);
+        gOpen(g->id);
         g->state = false; // schedule not active
+        saveConfig();
     }
+}
+
+void setup()
+{
+    Serial.begin(115200);
+
+    // attach LEDs
+    FastLED.addLeds<WS2812B, LED, GRB>(leds, NUM_LEDS);
+    FastLED.setBrightness(20);
+    leds[0] = CRGB::Yellow;
+    FastLED.show();
+
+    if (!SPIFFS.begin())
+    {
+        Serial.println("An Error has occurred while mounting SPIFFS");
+    }
+
+    Serial.println("SPIFFS content:");
+    listSFcontent();
+
+    getWiFiCredentials();
+    Serial.printf("SSID: %s\n", ssid);
+    Serial.printf("PW: %s\n", password);
+
+    WiFi.hostname(HOSTNAME);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    if (WiFi.waitForConnectResult(10000) != WL_CONNECTED)
+    {
+        Serial.printf("WiFi Failed!\n");
+
+        // switch to AP mode to host login portal
+        WiFi.mode(WIFI_AP);
+        delay(100);
+        WiFi.softAP(AP_SSID, AP_PASS);
+    }
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.isConnected() ? WiFi.localIP() : WiFi.softAPIP());
+
+    // attach servo pin to servo objects
+    S1.attach(SERVO_S1, 544, 2400);
+    S2.attach(SERVO_S2, 544, 2400);
+
+    pinMode(SERVO_EN_1, OUTPUT);
+    digitalWrite(g1.powerPin, HIGH);
+
+    pinMode(SERVO_EN_2, OUTPUT);
+    digitalWrite(g2.powerPin, HIGH);
+
+    // Get configurations from memory
+    getConfig();
+
+    // Create endpoints for website
+    createWebPages();
+    server.begin();
+
+    leds[0] = CRGB::Green;
+    FastLED.show();
+
+    Serial.println("Setup complete");
 }
 
 void loop()
@@ -353,6 +477,4 @@ void loop()
     // update the movement of a gate
     updateGate(&g1);
     updateGate(&g2);
-
-    FastLED.show();
 }
