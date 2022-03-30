@@ -25,6 +25,13 @@
 #include <config.h>
 #include <FastLED.h>
 
+#define USE_LittleFS
+#ifdef USE_LittleFS
+#include <FS.h>
+#define SPIFFS LittleFS
+#include <LittleFS.h>
+#endif
+
 AsyncWebServer server(80);
 const char *missingParams = "Missing/invalid parameter(s)";
 const char *typeJson = "application/json";
@@ -244,8 +251,7 @@ void createWebPages()
               {
                   saveWifiCredentials("", "");
                   request->send(200, "text/plain", "The wifi credentials have been reset");
-                  ESP.restart();
-              });
+                  ESP.restart(); });
 
     server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(SPIFFS, "/settings.html"); });
@@ -265,8 +271,7 @@ void createWebPages()
                       ESP.restart();
                   }
 
-                  request->send(400, typeJson, missingParams);
-              });
+                  request->send(400, typeJson, missingParams); });
 
     // api get info endpoint
     server.on("/api/info", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -284,8 +289,7 @@ void createWebPages()
                   gate_2["state"] = g2.target == closePos ? 0 : 1; // 1=open, 0=closed
                   gate_2["schedule"] = g2.schedule;
                   serializeJson(doc, *response);
-                  request->send(response);
-              });
+                  request->send(response); });
     // api endpoint to open a gate
     server.on("/api/open", HTTP_GET, [](AsyncWebServerRequest *request)
               {
@@ -300,8 +304,7 @@ void createWebPages()
                           request->send(200, typeJson, mOK);
                       }
                   }
-                  request->send(400, typeJson, missingParams);
-              });
+                  request->send(400, typeJson, missingParams); });
     // api endpoint to close a gate
     server.on("/api/close", HTTP_GET, [](AsyncWebServerRequest *request)
               {
@@ -316,8 +319,7 @@ void createWebPages()
                           request->send(200, typeJson, mOK);
                       }
                   }
-                  request->send(400, typeJson, missingParams);
-              });
+                  request->send(400, typeJson, missingParams); });
 
     // Send a GET request to <IP>/api/setdate?fdate=<message>
     server.on("/api/setdate", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -335,8 +337,7 @@ void createWebPages()
                       request->send(200, typeJson, mOK);
                       saveConfig();
                   }
-                  request->send(400, typeJson, missingParams);
-              });
+                  request->send(400, typeJson, missingParams); });
 
     // remove scheduled opening
     server.on("/api/cleardate", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -353,8 +354,7 @@ void createWebPages()
                       g->state = false; // schedule not active
                       request->send(200, typeJson, mOK);
                   }
-                  request->send(400, typeJson, missingParams);
-              });
+                  request->send(400, typeJson, missingParams); });
 
     server.onNotFound(notFound);
 }
@@ -453,6 +453,12 @@ void setup()
     }
     Serial.print("IP Address: ");
     Serial.println(WiFi.isConnected() ? WiFi.localIP() : WiFi.softAPIP());
+
+    if (!MDNS.begin(HOSTNAME))
+    { // Start the mDNS responder for esp8266.local
+        Serial.println("Error setting up MDNS responder!");
+    }
+    Serial.println("mDNS responder started");
 
     // attach servo pin to servo objects
     S1.attach(SERVO_S1, 544, 2400);
